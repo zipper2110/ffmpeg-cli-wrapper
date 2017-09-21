@@ -1,24 +1,24 @@
 package net.bramp.ffmpeg;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.CharStreams;
-import net.bramp.ffmpeg.io.ProcessUtils;
-
-import javax.annotation.Nonnull;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import static com.google.common.base.Preconditions.checkNotNull;
+import javax.annotation.Nonnull;
+import java.lang.Process;
 
 /** Private class to contain common methods for both FFmpeg and FFprobe. */
 abstract class FFcommon {
+
+  private static final long TIMEOUT_IN_SECS = 5;
 
   /** Path to the binary (e.g. /usr/bin/ffmpeg) */
   final String path;
@@ -27,7 +27,7 @@ abstract class FFcommon {
   final ProcessFunction runFunc;
 
   /** Version string */
-  String version = null;
+  private String version = null;
 
   public FFcommon(@Nonnull String path) {
     this(path, new RunProcessFunction());
@@ -39,19 +39,18 @@ abstract class FFcommon {
     this.path = path;
   }
 
-  protected BufferedReader wrapInReader(Process p) {
+  BufferedReader wrapInReader(Process p) {
     return new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
   }
 
-  protected void throwOnError(Process p) throws IOException {
+  void throwOnError(Process p) throws IOException {
     try {
-      // TODO In java 8 use waitFor(long timeout, TimeUnit unit)
-      if (ProcessUtils.waitForWithTimeout(p, 1, TimeUnit.SECONDS) != 0) {
+      if (!p.waitFor(TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
         // TODO Parse the error
         throw new IOException(path + " returned non-zero exit status. Check stdout.");
       }
-    } catch (TimeoutException e) {
-      throw new IOException("Timed out waiting for " + path + " to finish.");
+    } catch (InterruptedException e) {
+      throw new IOException("Timed out waiting for " + path + " to finish:" + e.getMessage());
     }
   }
 
