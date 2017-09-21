@@ -22,12 +22,11 @@ public class RunProcessFunction implements ProcessFunction {
   File workingDirectory;
 
   public Process run(List<String> args) throws IOException {
-
     Preconditions.checkNotNull(args, "Arguments must not be null");
     Preconditions.checkArgument(!args.isEmpty(), "No arguments specified");
 
     if (LOG.isInfoEnabled()) {
-      LOG.info("{}", Joiner.on(" ").join(args));
+      //      LOG.info("{}", Joiner.on(" ").join(args));
     }
 
     ProcessBuilder builder = new ProcessBuilder(args);

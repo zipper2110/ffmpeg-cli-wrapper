@@ -20,6 +20,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /** Private class to contain common methods for both FFmpeg and FFprobe. */
 abstract class FFcommon {
 
+  private static final long TIMEOUT_IN_SECS = 5;
+
   /** Path to the binary (e.g. /usr/bin/ffmpeg) */
   final String path;
 
@@ -27,7 +29,7 @@ abstract class FFcommon {
   final ProcessFunction runFunc;
 
   /** Version string */
-  String version = null;
+  private String version = null;
 
   public FFcommon(@Nonnull String path) {
     this(path, new RunProcessFunction());
@@ -39,19 +41,18 @@ abstract class FFcommon {
     this.path = path;
   }
 
-  protected BufferedReader wrapInReader(Process p) {
+  BufferedReader wrapInReader(Process p) {
     return new BufferedReader(new InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
   }
 
-  protected void throwOnError(Process p) throws IOException {
+  void throwOnError(Process p) throws IOException {
     try {
-      // TODO In java 8 use waitFor(long timeout, TimeUnit unit)
-      if (ProcessUtils.waitForWithTimeout(p, 1, TimeUnit.SECONDS) != 0) {
+      if (!p.waitFor(TIMEOUT_IN_SECS, TimeUnit.SECONDS)) {
         // TODO Parse the error
         throw new IOException(path + " returned non-zero exit status. Check stdout.");
       }
-    } catch (TimeoutException e) {
-      throw new IOException("Timed out waiting for " + path + " to finish.");
+    } catch (InterruptedException e) {
+      throw new IOException("Timed out waiting for " + path + " to finish:"+e.getMessage());
     }
   }
 
